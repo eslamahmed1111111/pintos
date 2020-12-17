@@ -189,19 +189,19 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   
   struct list_elem *element; //element from sleeping list
-  struct thread *wakeup_thread; //converting element to thread
+  struct thread *wake_thread; //converting element to thread
 
   // Check and wake up sleeping threads if its time has come.
   while (!list_empty(&sleeping_list)) {
     element = list_front(&sleeping_list); //first element in list
-    wakeup_thread = list_entry(element, struct thread, elem);  //converting element to thread
+    wake_thread = list_entry(element, struct thread, elem);  //converting element to thread
 
-    if (wakeup_thread->wakeup_ticks > ticks) {
+    if (wake_thread->wakeup_ticks > ticks) {
       break;
     }
 
     list_remove (element);
-    thread_unblock (wakeup_thread);
+    thread_unblock (wake_thread);
   }
 }
 
