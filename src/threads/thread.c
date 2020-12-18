@@ -59,6 +59,12 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+
+
+
+/* depth limit for donate_priority */
+#define MAX_DEPTH 8
+
 static void kernel_thread (thread_func *, void *aux);
 static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
@@ -161,10 +167,7 @@ thread_print_stats (void)
    The code provided sets the new thread's `priority' member to
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
-tid_t
-thread_create (const char *name, int priority,
-               thread_func *function, void *aux) 
-{
+tid_t thread_create (const char *name, int priority, thread_func *function, void *aux) {
   struct thread *t;
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
@@ -182,6 +185,8 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  enum intr_level old_level = intr_disable();
+   
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -197,10 +202,24 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  intr_set_level(old_level);
+   
   /* Add to run queue. */
   thread_unblock (t);
-
+   //something missed!!
+  /* If new thread has higher priority consider yielding */
+  before_yield();
+   
   return tid;
+}
+
+/* Test the current thread whether should out of CPU or not*/
+void before_yield(void) {  
+  if (!list_empty(&ready_list)) {  
+  struct thread *ready_thr= list_entry(list_front(&ready_list), struct thread, elem);
+     //if ready thread priority > running thread priority then running will yield cpu
+  if ((thread_current() -> priority) < ready_thr -> priority)
+    thread_yield();  }
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -236,7 +255,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list,&t -> elem, (list_less_func *) &changing_priority, NULL);
+  //list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -307,7 +327,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur -> elem, (list_less_func *) &changing_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -576,6 +596,15 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
+}
+
+/**
+ *  change priority compare
+ */
+bool changing_priority (const struct list_elem *elem_a, const struct list_elem *elem_b, void *aux UNUSED) {
+  struct thread *tread_a = list_entry(elem_a, struct thread, elem);
+  struct thread *tread_b = list_entry(elem_b, struct thread, elem);
+  return ((tread_a->priority) > (tread_b->priority));
 }
 
 /**
