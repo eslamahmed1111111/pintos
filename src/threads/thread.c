@@ -353,8 +353,64 @@ thread_foreach (thread_action_func *func, void *aux)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
-{
-  thread_current ()->priority = new_priority;
+{ 
+ enum intr_level old_level = intr_disable();
+  
+  /* get current thread priority */
+  int old_priority = thread_current()->priority;
+  
+  // give the current thread priority the new priority
+  thread_current()->priority = new_priority;
+  
+     if (!list_empty(&current_thread->donation_list)) {
+        //the highest thread priority in donation list
+          struct thread *donation_thread = list_entry(list_front(&current_thread->donation_list), struct thread, donation_list_elem);
+        //if the thread is holding a lock and now is in cpu
+         if ((current_thread->priority) < (donation_thread->priority)) {
+               current_thread->priority = donation_thread->priority;
+             }
+      }
+  
+  // If the current thread priority is higher than the previous thread priority
+  if (old_priority < thread_current()->priority) {
+    donate_priority(); // it need to donate its priority.
+  }
+
+  // If the current thread priority is lower than the previous thread priority,
+  if (old_priority > thread_current()->priority) {
+    test_yield(); // it need to test whether the current thread need to out the CPU or not.
+  }
+
+  intr_set_level(old_level);
+}
+
+/* Donate the priority (priority inheritance) */
+void donate_priority(void) {
+   
+  int depth = 0;
+  struct thread *t = thread_current(); // get current thread 
+  struct lock *waiting_on_lock = t->locked_on; // the lock that the current thread wants to hold
+
+  while (waiting_on_lock && depth < MAX_DEPTH) { // when lock is exist
+
+    if (waiting_on_lock->holder == NULL) { // no thread hold lock 
+      break;
+    }
+
+    // if the lock holder priority is higher than current thread priority
+    if ((waiting_on_lock->holder->priority) >= t->priority) {
+      break;
+    }
+    
+    // sets the priority of the lock holder to the priority of the current thread of greater priority
+    waiting_on_lock->holder->priority = t->priority;
+
+    t = waiting_on_lock->holder; // move down the tree.( t == the thread which holding the lock)
+
+    waiting_on_lock = t->locked_on; // put thread on lock . if the thread that hold lock waiting on another lock
+
+    depth++;
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -483,9 +539,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  old_level = intr_disable ();
-  list_push_back (&all_list, &t->allelem);
-  intr_set_level (old_level);
+ // initialize the values used in priority scheduling.
+  t -> locked_on = NULL;
+  list_init(&t -> donation_list);
+  t -> init_priority = priority;
+  list_push_back(&all_list, &t -> allelem);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
