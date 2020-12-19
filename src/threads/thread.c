@@ -413,11 +413,26 @@ void donate_priority(void) {
   }
 }
 
+
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
 {
   return thread_current ()->priority;
+}
+
+void lock_remove (struct lock *lock) {
+  struct list_elem *e;
+  struct thread *t;
+  for ( e = list_begin(&thread_current()->donation_list); e != list_end(&thread_current()->donation_list); e = list_next(e))
+  {
+    t = list_entry(e, struct thread, donation_list_elem);
+    
+    if (t->waiting_locked_on == lock) {
+      list_remove(e);
+    }
+  }
 }
 
 /* Sets the current thread's nice value to NICE. */
