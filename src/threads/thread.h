@@ -146,6 +146,13 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void before_yield(void); /* tests the current thread whether should out of CPU or not*/
+
+void donate_priority(void); /* donates the priority (priority inheritance) */
+
+void lock_remove (struct lock *lock); /* removes lock from donation_list */
+
 bool changing_priority (const struct list_elem *elem_a, const struct list_elem *elem_b, void *aux ) ;
 bool wakeup_thread(const struct list_elem *, const struct list_elem *, void *);
 #endif /* threads/thread.h */
