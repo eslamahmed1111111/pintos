@@ -378,7 +378,7 @@ thread_set_priority (int new_priority)
 
   // If the current thread priority is lower than the previous thread priority,
   if (old_priority > thread_current()->priority) {
-    test_yield(); // it need to test whether the current thread need to out the CPU or not.
+    before_yield(); // it need to test whether the current thread need to out the CPU or not.
   }
 
   intr_set_level(old_level);
