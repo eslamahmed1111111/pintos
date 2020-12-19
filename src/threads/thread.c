@@ -389,7 +389,7 @@ void donate_priority(void) {
    
   int depth = 0;
   struct thread *t = thread_current(); // get current thread 
-  struct lock *waiting_on_lock = t->locked_on; // the lock that the current thread wants to hold
+  struct lock *waiting_on_lock = t->waiting_locked_on; // the lock that the current thread wants to hold
 
   while (waiting_on_lock && depth < MAX_DEPTH) { // when lock is exist
 
@@ -407,7 +407,7 @@ void donate_priority(void) {
 
     t = waiting_on_lock->holder; // move down the tree.( t == the thread which holding the lock)
 
-    waiting_on_lock = t->locked_on; // put thread on lock . if the thread that hold lock waiting on another lock
+    waiting_on_lock = t->waiting_locked_on; // put thread on lock . if the thread that hold lock waiting on another lock
 
     depth++;
   }
@@ -540,7 +540,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
  // initialize the values used in priority scheduling.
-  t -> locked_on = NULL;
+  t -> waiting_locked_on = NULL;
   list_init(&t -> donation_list);
   t -> init_priority = priority;
   list_push_back(&all_list, &t -> allelem);
