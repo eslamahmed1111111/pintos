@@ -373,12 +373,10 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 bool change_sem_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
   struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
   struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
+   
+  return (list_empty(&sb->semaphore.waiters));//if second semaphore.waiters is empty return true
 
-  if (list_empty(&sb->semaphore.waiters))
-    return true;
-
-  if (list_empty(&sa->semaphore.waiters))
-    return false;
+  return (!list_empty(&sa->semaphore.waiters))//if first semaphore.waiters is empty return false
 
   // sort the waiters queue
   list_sort(&sa->semaphore.waiters, (list_less_func *) &changing_priority, NULL);
@@ -389,11 +387,7 @@ bool change_sem_priority (const struct list_elem *a, const struct list_elem *b, 
   struct thread *ta = list_entry(list_front(&sa->semaphore.waiters), struct thread, elem);
 
   struct thread *tb = list_entry(list_front(&sb->semaphore.waiters), struct thread, elem);
-
-  if ((ta->priority) > (tb->priority))
-    return true;
-  
-  
-  return false;
+   
+  return ((ta->priority) > (tb->priority));
 }
 
