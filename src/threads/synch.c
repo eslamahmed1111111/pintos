@@ -90,7 +90,7 @@ void sema_up (struct semaphore *sema) {
   
   if (!list_empty (&sema->waiters)) {
 
-    list_sort(&sema->waiters,(list_less_func *) &changing_priority, NULL);
+    list_sort(&sema->waiters,(list_less_func *) &changing_priority, NULL);//un block the highest priority waiting for the lock
     
     thread_unblock(list_entry(list_pop_front(&sema->waiters), struct thread, elem));
   }
@@ -216,8 +216,9 @@ lock_try_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   success = sema_try_down (&lock->semaphore);
-  if (success)
-    lock->holder = thread_current ();
+  if (success){
+    thread_current()->waiting_locked_on = NULL; //current thread hold lock
+    lock->holder = thread_current ();}
   return success;
 }
 
@@ -239,8 +240,8 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
 
   if (!thread_mlfqs) {
-    lock_remove(lock);
-    update_priority(); // update the priorities
+    lock_remove(lock);//delete donation threads for this lock holder
+    update_priority(); // update the priorities & if it still in cpu and waiting for another lock
   }
 
   sema_up(&lock->semaphore);
@@ -262,13 +263,6 @@ void update_priority (void) {
   
   new_thread = list_entry(list_front(&current_thread->donation_list), struct thread, donation_list_elem);
 
-  /*
-   * The current thread priority cannot higher than the thread in 
-   * donation_list.
-   * 
-   * It means that the current thread priority is equal to the new thread 
-   * priority in donation_list.
-   */
   if ((current_thread->priority) < (new_thread->priority)) {
     current_thread->priority = new_thread->priority;
   }
