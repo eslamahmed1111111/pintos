@@ -351,22 +351,23 @@ thread_set_priority (int new_priority)
   struct thread *current_thread=thread_current();
   /* get current thread priority */
   int old_priority = current_thread->priority;
-  
+   //return for init_priority if there is donation
+  current_thread->init_priority = new_priority;
   // give the current thread priority the new priority
   current_thread->priority = new_priority;
-  
+  //if current thread will take donation from its donation list
      if (!list_empty(&current_thread->donation_list)) {
         //the highest thread priority in donation list
           struct thread *donation_thread = list_entry(list_front(&current_thread->donation_list), struct thread, donation_list_elem);
         //if the thread is holding a lock and now is in cpu
-         if ((current_thread->priority) < (donation_thread->priority)) {
+         if ( (donation_thread->priority) > (current_thread->priority) ) {
                current_thread->priority = donation_thread->priority;
              }
       }
   
   // If the current thread priority is higher than the previous thread priority
   if (old_priority < current_thread->priority) {
-    donate_priority(); // it need to donate its priority.
+    donate_priority(); // it may be donate its priority if waiting for anoher lock
   }
 
   // If the current thread priority is lower than the previous thread priority,
