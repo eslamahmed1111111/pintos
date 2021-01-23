@@ -40,10 +40,9 @@ void cond_init (struct condition *);
 void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
-bool compare_sem_priority (const struct list_elem *a, const struct list_elem *b, void *aux ) ;
-void update_priority (void) ;
+bool change_sem_priority (const struct list_elem *a, const struct list_elem *b, void *aux ) ;
+void updating_priority (void) ;
 /* Optimization barrier.
-
    The compiler will not reorder operations across an
    optimization barrier.  See "Optimization Barriers" in the
    reference guide for more information.*/
