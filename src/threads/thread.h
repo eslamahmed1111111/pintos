@@ -4,6 +4,8 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h> 
+#include "devices/timer.h"
+//#include "fixed.h"
 
 
 /* States in a thread's life cycle. */
@@ -25,14 +27,16 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
-/* A kernel thread or user process.
 
+
+typedef int64_t real;
+
+/* A kernel thread or user process.
    Each thread structure is stored in its own 4 kB page.  The
    thread structure itself sits at the very bottom of the page
    (at offset 0).  The rest of the page is reserved for the
    thread's kernel stack, which grows downward from the top of
    the page (at offset 4 kB).  Here's an illustration:
-
         4 kB +---------------------------------+
              |          kernel stack           |
              |                |                |
@@ -54,22 +58,18 @@ typedef int tid_t;
              |               name              |
              |              status             |
         0 kB +---------------------------------+
-
    The upshot of this is twofold:
-
       1. First, `struct thread' must not be allowed to grow too
          big.  If it does, then there will not be enough room for
          the kernel stack.  Our base `struct thread' is only a
          few bytes in size.  It probably should stay well under 1
          kB.
-
       2. Second, kernel stacks must not be allowed to grow too
          large.  If a stack overflows, it will corrupt the thread
          state.  Thus, kernel functions should not allocate large
          structures or arrays as non-static local variables.  Use
          dynamic allocation with malloc() or palloc_get_page()
          instead.
-
    The first symptom of either of these problems will probably be
    an assertion failure in thread_current(), which checks that
    the `magic' member of the running thread's `struct thread' is
@@ -93,12 +93,14 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    
     struct lock *waiting_locked_on;     /* locked_on for priority donation logic */
     struct list donation_list;          /* list of donations */
-    struct list_elem donation_list_elem;/* element of the list of donations */
-    int init_priority;                  /* for thread_set_priority(), like a cache */
-    
-
+    struct list_elem donation_list_elem;
+    int init_priority;                 
+    int nice;
+    real recent_cpu;
+   
     int64_t wakeup_ticks;               /* Wakeup ticks for the timer sleep */
     
     
@@ -147,7 +149,31 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-void before_yield(void); /* tests the current thread whether should out of CPU or not*/
+
+//void before_yield(void); /* tests the current thread whether should out of CPU or not*/
+void donate_priority(void); /* donates the priority (priority inheritance) */
+
+void lock_remove (struct lock *lock); /* removes lock from donation_list */
+
+
+real int_to_fixed(int n);
+int fixed_to_nearest_int(real x);
+int fixed_to_int(real x);
+real mul_two_fixed(real x,real y);
+real add_two_fixed(real x,real y);
+real mul_fixed_int(real x,int n);
+real div_two_fixed(real x,real y);
+real div_fixed_int(real x,int n);
+real add_fixed_int(real x, int n);
+real sub_fixed_int(real x, int n);
+real sub_two_fixed(real x, real y);
+
+
+void before_yield(void);
+void update_loadAvg(void);
+void update_priority(struct thread *t, void *aux);
+void update_recent_cpu(struct thread *t, void *aux);
+int len_readyList(void);
 
 void donate_priority(void); /* donates the priority (priority inheritance) */
 
